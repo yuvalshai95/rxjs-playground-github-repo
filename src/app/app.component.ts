@@ -1,5 +1,5 @@
 import { Component, OnInit } from '@angular/core';
-import { map, mergeMap, Observable, of, switchMap, tap } from 'rxjs';
+import { map, mergeMap, Observable, of, switchMap, tap, from } from 'rxjs';
 
 import { GithubResponse, GithubService } from './github.service';
 import { GithubRepoDetails } from './github/github.component';
@@ -10,26 +10,29 @@ import { GithubRepoDetails } from './github/github.component';
   styleUrls: ['./app.component.scss'],
 })
 export class AppComponent implements OnInit {
+  constructor(public readonly service: GithubService) {}
+
   gits: any[] = [];
 
-  constructor(public readonly githubService: GithubService) {}
-
   ngOnInit() {
-    const usersGitUrls: any[] = [];
-
-    this.githubService
+    this.service
       .getGitUsers()
       .pipe(
-        tap((users) => {
-          console.log('users', users);
-          users.forEach((user) => {
-            usersGitUrls.push();
-          });
-        })
+        switchMap((users) =>
+          from(users).pipe(
+            switchMap((user) =>
+              this.service.getGitRepos(user.id).pipe(
+                map((repo) => ({
+                  firstName: user.firstName,
+                  repos: repo[0].repos.length,
+                }))
+              )
+            )
+          )
+        )
       )
-
       .subscribe((data) => {
-        console.log(data);
+        this.gits.push(data);
       });
   }
 }
